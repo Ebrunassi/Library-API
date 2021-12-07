@@ -1,6 +1,7 @@
 package br.com.study.libraryapi.controller;
 
 import br.com.study.libraryapi.dto.BookDTO;
+import br.com.study.libraryapi.exception.BusinessException;
 import br.com.study.libraryapi.model.entity.Book;
 import br.com.study.libraryapi.service.BookService;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -85,5 +86,24 @@ public class BookControllerTest {
         mvc.perform(request)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("errors", Matchers.hasSize(3)));
+    }
+
+    @Test
+    @DisplayName("Must throw an error due to trying to create a book with an isbn wich already exists")
+    public void createBookWithDuplicatedIsbn() throws Exception {
+
+        BookDTO dto = BookDTO.builder().author("Francis Chan").title("Crazy Love").isbn("001").build();
+        BDDMockito.given(service.save(Mockito.any(Book.class))).willThrow(new BusinessException("Isbn already exists!"));
+
+        String json = new ObjectMapper().writeValueAsString(dto);
+        MockHttpServletRequestBuilder request = MockMvcRequestBuilders.post(BOOK_API)       // Empty object
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .content(json);
+
+        mvc.perform(request)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("errors", Matchers.hasSize( 1)))
+                .andExpect(jsonPath("errors[0]").value("Isbn already exists!"));
     }
 }
