@@ -25,6 +25,8 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 
+import java.util.Optional;
+
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -105,5 +107,38 @@ public class BookControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("errors", Matchers.hasSize( 1)))
                 .andExpect(jsonPath("errors[0]").value("Isbn already exists!"));
+    }
+
+    @Test
+    @DisplayName("Must return the book's informations")
+    public void getBookDetailsTest() throws Exception {
+        // Scenario (given)
+        Long id = 1L;
+        Book book = Book.builder().id(id).author("J.R.R. Tolkien").title("The Lord of the Rings").isbn("0001").build();
+        BDDMockito.given(service.getById(id)).willReturn(Optional.of(book));
+
+        // Execution (when)
+        MockHttpServletRequestBuilder request = MockMvcRequestBuilders.get(BOOK_API.concat("/" + id))
+                .accept(MediaType.APPLICATION_JSON);
+        mvc.perform(request)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("id").isNotEmpty())
+                .andExpect(jsonPath("title").value(book.getTitle()))
+                .andExpect(jsonPath("author").value(book.getAuthor()))
+                .andExpect(jsonPath("isbn").value(book.getIsbn()));
+    }
+
+    @Test
+    @DisplayName("Must fail due to search for nonexistent book")
+    public void getNonexistentBook() throws Exception{
+        // Scenario
+        BDDMockito.given(service.getById(Mockito.anyLong()))
+                .willReturn(Optional.empty());
+
+        // Execution
+        MockHttpServletRequestBuilder request = MockMvcRequestBuilders.get(BOOK_API.concat("/" + 1L))
+                .accept(MediaType.APPLICATION_JSON);
+        mvc.perform(request)
+                .andExpect(status().isNotFound());
     }
 }
